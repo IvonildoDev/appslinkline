@@ -1,3 +1,4 @@
+// This file has been removed to prevent it from appearing in the menu.
 import { StyleSheet } from 'react-native';
 
 import EditScreenInfo from '@/components/EditScreenInfo';

@@ -1,25 +1,22 @@
+
+import { useColorScheme } from '@/components/useColorScheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { createDrawerNavigator } from '@react-navigation/drawer';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
-
-import { useColorScheme } from '@/components/useColorScheme';
+import { initDatabase } from '../utils/database';
 
 export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
+  ErrorBoundary
 } from 'expo-router';
-
-export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
-};
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
+
+const Drawer = createDrawerNavigator();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -27,10 +24,18 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
     if (error) throw error;
   }, [error]);
+
+  useEffect(() => {
+    // Initialize database
+    initDatabase().then(() => {
+      console.log('Database initialized successfully');
+    }).catch((error) => {
+      console.error('Failed to initialize database:', error);
+    });
+  }, []);
 
   useEffect(() => {
     if (loaded) {
@@ -50,10 +55,25 @@ function RootLayoutNav() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
+      <Drawer.Navigator
+        initialRouteName="home"
+        screenOptions={{
+          headerShown: true,
+          drawerStyle: { width: '50%' },
+        }}
+      >
+        <Drawer.Screen name="home" options={{ title: 'Home' }} getComponent={() => require('./home').default} />
+        <Drawer.Screen name="equipe" options={{ title: 'Equipe' }} getComponent={() => require('./equipe').default} />
+        <Drawer.Screen name="deslocamento" options={{ title: 'Deslocamento' }} getComponent={() => require('./deslocamento').default} />
+        <Drawer.Screen name="planejamento" options={{ title: 'Planejamento' }} getComponent={() => require('./planejamento').default} />
+        <Drawer.Screen name="montagem" options={{ title: 'Montagem' }} getComponent={() => require('./montagem').default} />
+        <Drawer.Screen name="teste" options={{ title: 'Teste' }} getComponent={() => require('./teste').default} />
+        <Drawer.Screen name="operacoes" options={{ title: 'Operações' }} getComponent={() => require('./operacoes').default} />
+        <Drawer.Screen name="desmontagem" options={{ title: 'Desmontagem' }} getComponent={() => require('./desmontagem').default} />
+        <Drawer.Screen name="turma" options={{ title: 'Turma' }} getComponent={() => require('./turma').default} />
+        <Drawer.Screen name="relatorio" options={{ title: 'Relatório' }} getComponent={() => require('./relatorio').default} />
+        <Drawer.Screen name="modal" options={{ title: 'Modal', drawerItemStyle: { display: 'none' } }} getComponent={() => require('./modal').default} />
+      </Drawer.Navigator>
     </ThemeProvider>
   );
 }
