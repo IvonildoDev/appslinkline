@@ -14,13 +14,19 @@ export default function DesmontagemScreen() {
     }
 
     try {
+      const agora = new Date();
+      const dataAtual = `${agora.getDate().toString().padStart(2, '0')}/${(agora.getMonth() + 1).toString().padStart(2, '0')}/${agora.getFullYear()}`;
+      
       const dados = {
         horaInicio: horaInicio.trim(),
         horaFim: horaFim.trim(),
-        frasePadrao
+        frasePadrao,
+        dataRegistro: dataAtual
       };
 
       await salvarDados('Desmontagem', dados);
+      Alert.alert('Sucesso', 'Desmontagem registrada com sucesso!');
+      
       // Limpar campos após salvamento
       setHoraInicio('');
       setHoraFim('');

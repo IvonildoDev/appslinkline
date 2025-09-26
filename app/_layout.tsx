@@ -1,4 +1,3 @@
-
 import { useColorScheme } from '@/components/useColorScheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { createDrawerNavigator } from '@react-navigation/drawer';
@@ -14,7 +13,9 @@ export {
 } from 'expo-router';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch((error) => {
+  console.warn('Failed to prevent splash screen auto-hide:', error);
+});
 
 const Drawer = createDrawerNavigator();
 
@@ -39,7 +40,9 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (loaded) {
-      SplashScreen.hideAsync();
+      SplashScreen.hideAsync().catch((error) => {
+        console.warn('Failed to hide splash screen:', error);
+      });
     }
   }, [loaded]);
 
@@ -73,6 +76,7 @@ function RootLayoutNav() {
         <Drawer.Screen name="turma" options={{ title: 'Turma' }} getComponent={() => require('./turma').default} />
         <Drawer.Screen name="relatorio" options={{ title: 'Relatório' }} getComponent={() => require('./relatorio').default} />
         <Drawer.Screen name="modal" options={{ title: 'Modal', drawerItemStyle: { display: 'none' } }} getComponent={() => require('./modal').default} />
+        <Drawer.Screen name="historico-poco" options={{ title: 'Histórico' }} getComponent={() => require('./(tabs)/historico-poco').default} />
       </Drawer.Navigator>
     </ThemeProvider>
   );

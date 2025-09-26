@@ -1,10 +1,9 @@
-
 import { useFocusEffect } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { buscarTodosDados, excluirDadosTela } from '../utils/database';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { buscarTodosDados, excluirDadosTela, excluirDadosComPadrao } from '../utils/database';
 
 function useAllData() {
   const [dados, setDados] = useState<Record<string, any>>({});
@@ -18,12 +17,11 @@ function useAllData() {
       // Convert array to object for easier access
       const dadosObj = todosDados.reduce((acc, item) => {
         const chave = item.tela.toLowerCase();
-        
         // Se for uma operação específica (ex: "Operações-RPE"), consolidar em "operações"
         if (item.tela.startsWith('Operações-')) {
-          // Se já existe dados de operações, criar array, senão criar novo
-          if (!acc['operações']) {
-            acc['operações'] = [];
+          // Se já existe dados de operações, garantir que é array
+          if (!Array.isArray(acc['operações'])) {
+            acc['operações'] = acc['operações'] ? [acc['operações']] : [];
           }
           acc['operações'].push({
             ...item.dados,
@@ -33,7 +31,6 @@ function useAllData() {
           // Para outras telas, usar a chave normal
           acc[chave] = item.dados;
         }
-        
         return acc;
       }, {} as Record<string, any>);
       
@@ -96,6 +93,57 @@ function Card({
 
 export default function RelatorioScreen() {
   const { dados, carregando, recarregar } = useAllData();
+  const [dataFiltro, setDataFiltro] = useState('');
+  const [dadosFiltrados, setDadosFiltrados] = useState<Record<string, any>>({});
+
+  const formatarDataHoje = () => {
+    const hoje = new Date();
+    const dia = hoje.getDate().toString().padStart(2, '0');
+    const mes = (hoje.getMonth() + 1).toString().padStart(2, '0');
+    const ano = hoje.getFullYear();
+    return `${dia}/${mes}/${ano}`;
+  };
+
+  const selecionarHoje = () => {
+    const hoje = formatarDataHoje();
+    setDataFiltro(hoje);
+  };
+
+  const filtrarDadosPorData = () => {
+    if (!dataFiltro.trim()) {
+      setDadosFiltrados(dados);
+      return;
+    }
+
+    const dadosFiltr = Object.keys(dados).reduce((acc, chave) => {
+      const item = dados[chave];
+      
+      // Se for um array (como operações), filtrar cada item
+      if (Array.isArray(item)) {
+        const itensFiltrados = item.filter((operacao) => {
+          const dataOperacao = operacao.dataOperacao || operacao.data;
+          return dataOperacao && dataOperacao.includes(dataFiltro);
+        });
+        if (itensFiltrados.length > 0) {
+          acc[chave] = itensFiltrados;
+        }
+      } else if (item && typeof item === 'object') {
+        // Para objetos únicos, verificar se tem data que bate com o filtro
+        const dataItem = item.dataOperacao || item.data || item.dataRegistro;
+        if (dataItem && dataItem.includes(dataFiltro)) {
+          acc[chave] = item;
+        }
+      }
+      return acc;
+    }, {} as Record<string, any>);
+
+    setDadosFiltrados(dadosFiltr);
+  };
+
+  // Atualizar filtro quando dados ou dataFiltro mudarem
+  useEffect(() => {
+    filtrarDadosPorData();
+  }, [dados, dataFiltro]);
 
   const handleEdit = (tela: string) => {
     // Navegar para a tela correspondente usando Expo Router
@@ -127,7 +175,12 @@ export default function RelatorioScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await excluirDadosTela(tela);
+              // Para operações, deletar tanto 'Operações' quanto todas as variações 'Operações-*'
+              if (tela === 'Operações') {
+                await excluirDadosComPadrao('Operações%');
+              } else {
+                await excluirDadosTela(tela);
+              }
               // Recarregar dados
               recarregar();
               Alert.alert('Sucesso', 'Dados excluídos com sucesso!');
@@ -145,120 +198,106 @@ export default function RelatorioScreen() {
     try {
       let mensagem = '📋 RELATÓRIO GERAL SLIKLINE\n\n';
       
-      if (dados.equipe) {
+      if (dadosFiltrados.equipe) {
         mensagem += `👥 EQUIPE:\n`;
-        mensagem += `• Turno: ${dados.equipe.turno}\n`;
-        mensagem += `• Operador: ${dados.equipe.operador}\n`;
-        mensagem += `• Auxiliar: ${dados.equipe.auxiliar}\n`;
-        mensagem += `• Unidade: ${dados.equipe.unidade}\n\n`;
+        mensagem += `• Turno: ${dadosFiltrados.equipe.turno}\n`;
+        mensagem += `• Operador: ${dadosFiltrados.equipe.operador}\n`;
+        mensagem += `• Auxiliar: ${dadosFiltrados.equipe.auxiliar}\n`;
+        mensagem += `• Unidade: ${dadosFiltrados.equipe.unidade}\n\n`;
       }
       
-      if (dados.deslocamento) {
+      if (dadosFiltrados.deslocamento) {
         mensagem += `🚗 DESLOCAMENTO:\n`;
-        mensagem += `• Origem: ${dados.deslocamento.origem}\n`;
-        mensagem += `• Destino: ${dados.deslocamento.destino}\n`;
-        mensagem += `• Hora início: ${dados.deslocamento.horaInicio}\n`;
-        mensagem += `• Hora fim: ${dados.deslocamento.horaFim}\n\n`;
+        mensagem += `• Origem: ${dadosFiltrados.deslocamento.origem}\n`;
+        mensagem += `• Destino: ${dadosFiltrados.deslocamento.destino}\n`;
+        mensagem += `• Hora início: ${dadosFiltrados.deslocamento.horaInicio}\n`;
+        mensagem += `• Hora fim: ${dadosFiltrados.deslocamento.horaFim}\n\n`;
       }
       
-      if (dados.planejamento) {
+      if (dadosFiltrados.planejamento) {
         mensagem += `📋 PLANEJAMENTO:\n`;
-        mensagem += `• Hora início: ${dados.planejamento.horaInicio}\n`;
-        mensagem += `• Hora fim: ${dados.planejamento.horaFim}\n`;
-        mensagem += `• Frase: ${dados.planejamento.frase}\n`;
-        if (dados.planejamento.observacoes) {
-          mensagem += `• Observações: ${dados.planejamento.observacoes}\n`;
+        mensagem += `• Hora início: ${dadosFiltrados.planejamento.horaInicio}\n`;
+        mensagem += `• Hora fim: ${dadosFiltrados.planejamento.horaFim}\n`;
+        mensagem += `• Frase: ${dadosFiltrados.planejamento.frase}\n`;
+        if (dadosFiltrados.planejamento.observacoes) {
+          mensagem += `• Observações: ${dadosFiltrados.planejamento.observacoes}\n`;
         }
         mensagem += '\n';
       }
       
-      if (dados.montagem) {
+      if (dadosFiltrados.montagem) {
         mensagem += `🔧 MONTAGEM:\n`;
-        mensagem += `• Hora início: ${dados.montagem.horaInicio}\n`;
-        mensagem += `• Hora fim: ${dados.montagem.horaFim}\n`;
-        mensagem += `• Frase: ${dados.montagem.frase}\n\n`;
+        mensagem += `• Hora início: ${dadosFiltrados.montagem.horaInicio}\n`;
+        mensagem += `• Hora fim: ${dadosFiltrados.montagem.horaFim}\n`;
+        mensagem += `• Frase: ${dadosFiltrados.montagem.frase}\n\n`;
       }
       
-      if (dados.teste) {
+      if (dadosFiltrados.teste) {
         mensagem += `🧪 TESTE:\n`;
-        mensagem += `• Hora início: ${dados.teste.horaInicio}\n`;
-        mensagem += `• Hora fim: ${dados.teste.horaFim}\n`;
-        mensagem += `• 500 psi: ${dados.teste.psi500}\n`;
-        mensagem += `• 3000 psi: ${dados.teste.psi3000}\n`;
-        mensagem += `• Frase: ${dados.teste.frasePadrao}\n\n`;
+        mensagem += `• Hora início: ${dadosFiltrados.teste.horaInicio}\n`;
+        mensagem += `• Hora fim: ${dadosFiltrados.teste.horaFim}\n`;
+        mensagem += `• 500 psi: ${dadosFiltrados.teste.psi500}\n`;
+        mensagem += `• 3000 psi: ${dadosFiltrados.teste.psi3000}\n`;
+        mensagem += `• Frase: ${dadosFiltrados.teste.frasePadrao}\n\n`;
       }
       
-      if (dados.operações) {
+      if (dadosFiltrados.operações) {
         mensagem += `⚙️ OPERAÇÕES:\n`;
-        if (Array.isArray(dados.operações)) {
-          dados.operações.forEach((operacao, index) => {
+        // Função para exibir todos os campos do objeto operação
+        const traduzirCampo = (chave: string, valor: any) => {
+          switch (chave) {
+            case 'servico': return `• Serviço: ${valor}`;
+            case 'tipoOperacao': return `• Tipo: ${valor}`;
+            case 'poco': return `• Poço: ${valor}`;
+            case 'horaInicio': return `• Hora início: ${valor}`;
+            case 'horaFim': return `• Hora fim: ${valor}`;
+            case 'pressaoCabeca': return `• Pressão cabeça: ${valor} psi`;
+            case 'pressaoAnular': return `• Pressão anular: ${valor} psi`;
+            case 'operacaoConcluida': return `• Operação concluída: ${valor ? 'Sim' : 'Não'}`;
+            case 'statusSelecionado': return `• Status: ${valor}`;
+            case 'observacao': return `• Observação: ${valor}`;
+            case 'tipoDesparafinacao': return `• Tipo de desparafinação: ${valor}`;
+            case 'precisouUcaq': return `• Auxílio UCAQ: ${valor ? 'Sim' : 'Não'}`;
+            default:
+              if (typeof valor === 'boolean') return `• ${chave}: ${valor ? 'Sim' : 'Não'}`;
+              if (valor !== undefined && valor !== null && valor !== '') return `• ${chave}: ${valor}`;
+              return '';
+          }
+        };
+        if (Array.isArray(dadosFiltrados.operações)) {
+          dadosFiltrados.operações.forEach((operacao, index) => {
             if (index > 0) mensagem += `\n`;
-            mensagem += `🔧 ${operacao.tipoOperacao}:\n`;
-            mensagem += `• Serviço: ${operacao.servico}\n`;
-            if (operacao.poco) {
-              mensagem += `• Poço: ${operacao.poco}\n`;
-            }
-            if (operacao.horaInicio) {
-              mensagem += `• Hora início: ${operacao.horaInicio}\n`;
-              mensagem += `• Hora fim: ${operacao.horaFim}\n`;
-            }
-            if (operacao.pressaoCabeca) {
-              mensagem += `• Pressão cabeça: ${operacao.pressaoCabeca} psi\n`;
-            }
-            if (operacao.pressaoAnular) {
-              mensagem += `• Pressão anular: ${operacao.pressaoAnular} psi\n`;
-            }
-            if (operacao.operacaoConcluida !== undefined) {
-              mensagem += `• Operação concluída: ${operacao.operacaoConcluida ? 'Sim' : 'Não'}\n`;
-            }
-            if (operacao.statusSelecionado) {
-              mensagem += `• Status: ${operacao.statusSelecionado}\n`;
-            }
-            if (operacao.observacao) {
-              mensagem += `• Observação: ${operacao.observacao}\n`;
-            }
+            mensagem += `🔧 ${operacao.tipoOperacao || operacao.servico}:\n`;
+            Object.entries(operacao).forEach(([chave, valor]) => {
+              if (chave === 'tipoOperacao') return; // já exibido no título
+              const linha = traduzirCampo(chave, valor);
+              if (linha) mensagem += linha + '\n';
+            });
           });
         } else {
           // Formato antigo (fallback)
-          mensagem += `• Serviço: ${dados.operações.servico}\n`;
-          mensagem += `• Poço: ${dados.operações.poco}\n`;
-          if (dados.operações.horaInicio) {
-            mensagem += `• Hora início: ${dados.operações.horaInicio}\n`;
-            mensagem += `• Hora fim: ${dados.operações.horaFim}\n`;
-          }
-          if (dados.operações.pressaoCabeca) {
-            mensagem += `• Pressão cabeça: ${dados.operações.pressaoCabeca} psi\n`;
-          }
-          if (dados.operações.pressaoAnular) {
-            mensagem += `• Pressão anular: ${dados.operações.pressaoAnular} psi\n`;
-          }
-          if (dados.operações.operacaoConcluida !== undefined) {
-            mensagem += `• Operação concluída: ${dados.operações.operacaoConcluida ? 'Sim' : 'Não'}\n`;
-          }
-          if (dados.operações.statusSelecionado) {
-            mensagem += `• Status: ${dados.operações.statusSelecionado}\n`;
-          }
-          if (dados.operações.observacao) {
-            mensagem += `• Observação: ${dados.operações.observacao}\n`;
-          }
+          Object.entries(dadosFiltrados.operações).forEach(([chave, valor]) => {
+            const linha = traduzirCampo(chave, valor);
+            if (linha) mensagem += linha + '\n';
+          });
         }
         mensagem += '\n';
       }
       
-      if (dados.desmontagem) {
+      if (dadosFiltrados.desmontagem) {
         mensagem += `🔨 DESMONTAGEM:\n`;
-        mensagem += `• Hora início: ${dados.desmontagem.horaInicio}\n`;
-        mensagem += `• Hora fim: ${dados.desmontagem.horaFim}\n`;
-        mensagem += `• Frase: ${dados.desmontagem.frasePadrao}\n\n`;
+        mensagem += `• Hora início: ${dadosFiltrados.desmontagem.horaInicio}\n`;
+        mensagem += `• Hora fim: ${dadosFiltrados.desmontagem.horaFim}\n`;
+        mensagem += `• Frase: ${dadosFiltrados.desmontagem.frasePadrao}\n\n`;
       }
       
-      if (dados.turma) {
+      if (dadosFiltrados.turma) {
         mensagem += `👨‍👩‍👧‍👦 TURMA:\n`;
-        mensagem += `• Hora início: ${dados.turma.horaInicio}\n`;
-        mensagem += `• Hora fim: ${dados.turma.horaFim}\n`;
-        mensagem += `• Frase: ${dados.turma.frasePadrao}\n`;
-        if (dados.turma.observacoes) {
-          mensagem += `• Observações: ${dados.turma.observacoes}\n`;
+        mensagem += `• Hora início: ${dadosFiltrados.turma.horaInicio}\n`;
+        mensagem += `• Hora fim: ${dadosFiltrados.turma.horaFim}\n`;
+        mensagem += `• Frase: ${dadosFiltrados.turma.frasePadrao}\n`;
+        if (dadosFiltrados.turma.observacoes) {
+          mensagem += `• Observações: ${dadosFiltrados.turma.observacoes}\n`;
         }
         mensagem += '\n';
       }
@@ -284,7 +323,24 @@ export default function RelatorioScreen() {
     <ScrollView style={styles.container}>
       <Text style={styles.title}>Relatório Geral</Text>
       
-      {Object.keys(dados).length === 0 ? (
+      {/* Filtros */}
+      <View style={styles.filtroContainer}>
+        <Text style={styles.filtroLabel}>Filtrar por data:</Text>
+        <View style={styles.filtroRow}>
+          <TextInput
+            style={styles.filtroInput}
+            value={dataFiltro}
+            onChangeText={setDataFiltro}
+            placeholder="dd/mm/aaaa"
+            maxLength={10}
+          />
+          <TouchableOpacity style={styles.hojeButton} onPress={selecionarHoje}>
+            <Text style={styles.hojeButtonText}>Hoje</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+      
+      {Object.keys(dadosFiltrados).length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>Nenhum dado salvo ainda.</Text>
           <Text style={styles.emptySubText}>Preencha as telas para visualizar o relatório aqui.</Text>
@@ -302,76 +358,76 @@ export default function RelatorioScreen() {
           </TouchableOpacity>
         </>
       )}
-      {dados.equipe && (
+      {dadosFiltrados.equipe && (
         <Card 
           title="👥 Equipe"
           onEdit={() => handleEdit('Equipe')}
-          onDelete={() => handleDelete('Equipe')}
+          onDelete={() => handleDelete('equipe')}
         >
-          <Text style={styles.cardText}>Turno: {dados.equipe.turno}</Text>
-          <Text style={styles.cardText}>Operador: {dados.equipe.operador}</Text>
-          <Text style={styles.cardText}>Auxiliar: {dados.equipe.auxiliar}</Text>
-          <Text style={styles.cardText}>Unidade: {dados.equipe.unidade}</Text>
+          <Text style={styles.cardText}>Turno: {dadosFiltrados.equipe.turno}</Text>
+          <Text style={styles.cardText}>Operador: {dadosFiltrados.equipe.operador}</Text>
+          <Text style={styles.cardText}>Auxiliar: {dadosFiltrados.equipe.auxiliar}</Text>
+          <Text style={styles.cardText}>Unidade: {dadosFiltrados.equipe.unidade}</Text>
         </Card>
       )}
-      {dados.deslocamento && (
+      {dadosFiltrados.deslocamento && (
         <Card 
           title="🚗 Deslocamento"
           onEdit={() => handleEdit('Deslocamento')}
-          onDelete={() => handleDelete('Deslocamento')}
+          onDelete={() => handleDelete('deslocamento')}
         >
-          <Text style={styles.cardText}>Origem: {dados.deslocamento.origem}</Text>
-          <Text style={styles.cardText}>Destino: {dados.deslocamento.destino}</Text>
-          <Text style={styles.cardText}>Hora início: {dados.deslocamento.horaInicio}</Text>
-          <Text style={styles.cardText}>Hora fim: {dados.deslocamento.horaFim}</Text>
+          <Text style={styles.cardText}>Origem: {dadosFiltrados.deslocamento.origem}</Text>
+          <Text style={styles.cardText}>Destino: {dadosFiltrados.deslocamento.destino}</Text>
+          <Text style={styles.cardText}>Hora início: {dadosFiltrados.deslocamento.horaInicio}</Text>
+          <Text style={styles.cardText}>Hora fim: {dadosFiltrados.deslocamento.horaFim}</Text>
         </Card>
       )}
-      {dados.planejamento && (
+      {dadosFiltrados.planejamento && (
         <Card 
           title="📋 Planejamento"
           onEdit={() => handleEdit('Planejamento')}
-          onDelete={() => handleDelete('Planejamento')}
+          onDelete={() => handleDelete('planejamento')}
         >
-          <Text style={styles.cardText}>Hora início: {dados.planejamento.horaInicio}</Text>
-          <Text style={styles.cardText}>Hora fim: {dados.planejamento.horaFim}</Text>
-          <Text style={styles.cardText}>Frase: {dados.planejamento.frase}</Text>
-          {dados.planejamento.observacoes && (
-            <Text style={styles.cardText}>Observações: {dados.planejamento.observacoes}</Text>
+          <Text style={styles.cardText}>Hora início: {dadosFiltrados.planejamento.horaInicio}</Text>
+          <Text style={styles.cardText}>Hora fim: {dadosFiltrados.planejamento.horaFim}</Text>
+          <Text style={styles.cardText}>Frase: {dadosFiltrados.planejamento.frase}</Text>
+          {dadosFiltrados.planejamento.observacoes && (
+            <Text style={styles.cardText}>Observações: {dadosFiltrados.planejamento.observacoes}</Text>
           )}
         </Card>
       )}
-      {dados.montagem && (
+      {dadosFiltrados.montagem && (
         <Card 
           title="🔧 Montagem"
           onEdit={() => handleEdit('Montagem')}
-          onDelete={() => handleDelete('Montagem')}
+          onDelete={() => handleDelete('montagem')}
         >
-          <Text style={styles.cardText}>Hora início: {dados.montagem.horaInicio}</Text>
-          <Text style={styles.cardText}>Hora fim: {dados.montagem.horaFim}</Text>
-          <Text style={styles.cardText}>Frase: {dados.montagem.frase}</Text>
+          <Text style={styles.cardText}>Hora início: {dadosFiltrados.montagem.horaInicio}</Text>
+          <Text style={styles.cardText}>Hora fim: {dadosFiltrados.montagem.horaFim}</Text>
+          <Text style={styles.cardText}>Frase: {dadosFiltrados.montagem.frase}</Text>
         </Card>
       )}
-      {dados.teste && (
+      {dadosFiltrados.teste && (
         <Card 
           title="🧪 Teste"
           onEdit={() => handleEdit('Teste')}
           onDelete={() => handleDelete('Teste')}
         >
-          <Text style={styles.cardText}>Hora início: {dados.teste.horaInicio}</Text>
-          <Text style={styles.cardText}>Hora fim: {dados.teste.horaFim}</Text>
-          <Text style={styles.cardText}>500 psi: {dados.teste.psi500}</Text>
-          <Text style={styles.cardText}>3000 psi: {dados.teste.psi3000}</Text>
-          <Text style={styles.cardText}>Frase: {dados.teste.frasePadrao}</Text>
+          <Text style={styles.cardText}>Hora início: {dadosFiltrados.teste.horaInicio}</Text>
+          <Text style={styles.cardText}>Hora fim: {dadosFiltrados.teste.horaFim}</Text>
+          <Text style={styles.cardText}>500 psi: {dadosFiltrados.teste.psi500}</Text>
+          <Text style={styles.cardText}>3000 psi: {dadosFiltrados.teste.psi3000}</Text>
+          <Text style={styles.cardText}>Frase: {dadosFiltrados.teste.frasePadrao}</Text>
         </Card>
       )}
-      {dados.operações && (
+      {dadosFiltrados.operações && (
         <Card 
           title="⚙️ Operações"
           onEdit={() => handleEdit('Operações')}
           onDelete={() => handleDelete('Operações')}
         >
-          {Array.isArray(dados.operações) ? (
-            dados.operações.map((operacao, index) => (
+          {Array.isArray(dadosFiltrados.operações) ? (
+            dadosFiltrados.operações.map((operacao, index) => (
               <View key={index} style={[styles.subCard, index > 0 && { marginTop: 12 }]}>
                 <Text style={styles.subCardTitle}>🔧 {operacao.tipoOperacao}</Text>
                 <Text style={styles.cardText}>Serviço: {operacao.servico}</Text>
@@ -404,55 +460,55 @@ export default function RelatorioScreen() {
           ) : (
             // Fallback para formato antigo
             <>
-              <Text style={styles.cardText}>Serviço: {dados.operações.servico}</Text>
-              <Text style={styles.cardText}>Poço: {dados.operações.poco}</Text>
-              {dados.operações.horaInicio && (
+              <Text style={styles.cardText}>Serviço: {dadosFiltrados.operações.servico}</Text>
+              <Text style={styles.cardText}>Poço: {dadosFiltrados.operações.poco}</Text>
+              {dadosFiltrados.operações.horaInicio && (
                 <>
-                  <Text style={styles.cardText}>Hora início: {dados.operações.horaInicio}</Text>
-                  <Text style={styles.cardText}>Hora fim: {dados.operações.horaFim}</Text>
+                  <Text style={styles.cardText}>Hora início: {dadosFiltrados.operações.horaInicio}</Text>
+                  <Text style={styles.cardText}>Hora fim: {dadosFiltrados.operações.horaFim}</Text>
                 </>
               )}
-              {dados.operações.pressaoCabeca && (
-                <Text style={styles.cardText}>Pressão cabeça: {dados.operações.pressaoCabeca} psi</Text>
+              {dadosFiltrados.operações.pressaoCabeca && (
+                <Text style={styles.cardText}>Pressão cabeça: {dadosFiltrados.operações.pressaoCabeca} psi</Text>
               )}
-              {dados.operações.pressaoAnular && (
-                <Text style={styles.cardText}>Pressão anular: {dados.operações.pressaoAnular} psi</Text>
+              {dadosFiltrados.operações.pressaoAnular && (
+                <Text style={styles.cardText}>Pressão anular: {dadosFiltrados.operações.pressaoAnular} psi</Text>
               )}
-              {dados.operações.operacaoConcluida !== undefined && (
-                <Text style={styles.cardText}>Operação concluída: {dados.operações.operacaoConcluida ? 'Sim' : 'Não'}</Text>
+              {dadosFiltrados.operações.operacaoConcluida !== undefined && (
+                <Text style={styles.cardText}>Operação concluída: {dadosFiltrados.operações.operacaoConcluida ? 'Sim' : 'Não'}</Text>
               )}
-              {dados.operações.statusSelecionado && (
-                <Text style={styles.cardText}>Status: {dados.operações.statusSelecionado}</Text>
+              {dadosFiltrados.operações.statusSelecionado && (
+                <Text style={styles.cardText}>Status: {dadosFiltrados.operações.statusSelecionado}</Text>
               )}
-              {dados.operações.observacao && (
-                <Text style={styles.cardText}>Observação: {dados.operações.observacao}</Text>
+              {dadosFiltrados.operações.observacao && (
+                <Text style={styles.cardText}>Observação: {dadosFiltrados.operações.observacao}</Text>
               )}
             </>
           )}
         </Card>
       )}
-      {dados.desmontagem && (
+      {dadosFiltrados.desmontagem && (
         <Card 
           title="🔨 Desmontagem"
           onEdit={() => handleEdit('Desmontagem')}
           onDelete={() => handleDelete('Desmontagem')}
         >
-          <Text style={styles.cardText}>Hora início: {dados.desmontagem.horaInicio}</Text>
-          <Text style={styles.cardText}>Hora fim: {dados.desmontagem.horaFim}</Text>
-          <Text style={styles.cardText}>Frase: {dados.desmontagem.frasePadrao}</Text>
+          <Text style={styles.cardText}>Hora início: {dadosFiltrados.desmontagem.horaInicio}</Text>
+          <Text style={styles.cardText}>Hora fim: {dadosFiltrados.desmontagem.horaFim}</Text>
+          <Text style={styles.cardText}>Frase: {dadosFiltrados.desmontagem.frasePadrao}</Text>
         </Card>
       )}
-      {dados.turma && (
+      {dadosFiltrados.turma && (
         <Card 
           title="👨‍👩‍👧‍👦 Turma"
           onEdit={() => handleEdit('Turma')}
           onDelete={() => handleDelete('Turma')}
         >
-          <Text style={styles.cardText}>Hora início: {dados.turma.horaInicio}</Text>
-          <Text style={styles.cardText}>Hora fim: {dados.turma.horaFim}</Text>
-          <Text style={styles.cardText}>Frase: {dados.turma.frasePadrao}</Text>
-          {dados.turma.observacoes && (
-            <Text style={styles.cardText}>Observações: {dados.turma.observacoes}</Text>
+          <Text style={styles.cardText}>Hora início: {dadosFiltrados.turma.horaInicio}</Text>
+          <Text style={styles.cardText}>Hora fim: {dadosFiltrados.turma.horaFim}</Text>
+          <Text style={styles.cardText}>Frase: {dadosFiltrados.turma.frasePadrao}</Text>
+          {dadosFiltrados.turma.observacoes && (
+            <Text style={styles.cardText}>Observações: {dadosFiltrados.turma.observacoes}</Text>
           )}
         </Card>
       )}
@@ -580,5 +636,48 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
+  },
+  filtroContainer: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 10,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  filtroLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2563eb',
+    marginBottom: 8,
+  },
+  filtroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  filtroInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 16,
+    backgroundColor: '#fff',
+  },
+  hojeButton: {
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  hojeButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });

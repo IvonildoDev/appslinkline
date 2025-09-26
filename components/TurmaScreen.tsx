@@ -15,11 +15,15 @@ export default function TurmaScreen() {
     }
 
     try {
+      const agora = new Date();
+      const dataAtual = `${agora.getDate().toString().padStart(2, '0')}/${(agora.getMonth() + 1).toString().padStart(2, '0')}/${agora.getFullYear()}`;
+      
       const dados = {
         horaInicio: horaInicio.trim(),
         horaFim: horaFim.trim(),
         frasePadrao,
-        observacoes: observacoes.trim()
+        observacoes: observacoes.trim(),
+        dataRegistro: dataAtual
       };
 
       await salvarDados('Turma', dados);
@@ -182,6 +186,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 10,
     marginTop: 24,
+    marginBottom: 50,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

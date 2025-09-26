@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { salvarDados } from '../utils/database';
 
 export default function DeslocamentoScreen() {
@@ -9,10 +9,34 @@ export default function DeslocamentoScreen() {
   const [horaFim, setHoraFim] = useState('');
 
   const salvarNoBanco = async () => {
+    if (!origem.trim() || !destino.trim() || !horaInicio.trim() || !horaFim.trim()) {
+      Alert.alert('Erro', 'Por favor, preencha todos os campos');
+      return;
+    }
+
     try {
-      await salvarDados('deslocamento', { origem, destino, horaInicio, horaFim });
+      const agora = new Date();
+      const dataAtual = `${agora.getDate().toString().padStart(2, '0')}/${(agora.getMonth() + 1).toString().padStart(2, '0')}/${agora.getFullYear()}`;
+      
+      const dados = {
+        origem: origem.trim(),
+        destino: destino.trim(),
+        horaInicio: horaInicio.trim(),
+        horaFim: horaFim.trim(),
+        dataRegistro: dataAtual
+      };
+
+      await salvarDados('deslocamento', dados);
+      Alert.alert('Sucesso', 'Deslocamento registrado com sucesso!');
+      
+      // Limpar campos após salvamento
+      setOrigem('');
+      setDestino('');
+      setHoraInicio('');
+      setHoraFim('');
     } catch (error) {
       console.error('Erro ao salvar dados do deslocamento:', error);
+      Alert.alert('Erro', 'Não foi possível salvar os dados');
     }
   };
 

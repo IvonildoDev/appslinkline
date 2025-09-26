@@ -1,11 +1,44 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { salvarDados } from '../utils/database';
 
 export default function EquipamentoScreen() {
   const [montagemInicio, setMontagemInicio] = useState('');
   const [montagemFim, setMontagemFim] = useState('');
   const [desmontagemInicio, setDesmontagemInicio] = useState('');
   const [desmontagemFim, setDesmontagemFim] = useState('');
+
+  const salvarNoBanco = async () => {
+    if (!montagemInicio.trim() || !montagemFim.trim() || !desmontagemInicio.trim() || !desmontagemFim.trim()) {
+      Alert.alert('Erro', 'Por favor, preencha todos os campos de horário');
+      return;
+    }
+
+    try {
+      const agora = new Date();
+      const dataAtual = `${agora.getDate().toString().padStart(2, '0')}/${(agora.getMonth() + 1).toString().padStart(2, '0')}/${agora.getFullYear()}`;
+      
+      const dados = {
+        montagemInicio: montagemInicio.trim(),
+        montagemFim: montagemFim.trim(),
+        desmontagemInicio: desmontagemInicio.trim(),
+        desmontagemFim: desmontagemFim.trim(),
+        dataRegistro: dataAtual
+      };
+
+      await salvarDados('equipamento', dados);
+      Alert.alert('Sucesso', 'Dados do equipamento salvos com sucesso!');
+      
+      // Limpar campos após salvamento
+      setMontagemInicio('');
+      setMontagemFim('');
+      setDesmontagemInicio('');
+      setDesmontagemFim('');
+    } catch (error) {
+      console.error('Erro ao salvar dados do equipamento:', error);
+      Alert.alert('Erro', 'Não foi possível salvar os dados');
+    }
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -97,7 +130,7 @@ export default function EquipamentoScreen() {
           <Text style={styles.resumoItem}>Desmontagem: {desmontagemInicio || '---'} às {desmontagemFim || '---'}</Text>
         </View>
 
-        <TouchableOpacity style={styles.registrarButton} onPress={() => {}}>
+        <TouchableOpacity style={styles.registrarButton} onPress={salvarNoBanco}>
           <Text style={styles.registrarButtonText}>Registrar</Text>
         </TouchableOpacity>
       </View>

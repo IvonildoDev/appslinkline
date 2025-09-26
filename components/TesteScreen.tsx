@@ -16,15 +16,21 @@ export default function TesteScreen() {
     }
 
     try {
+      const agora = new Date();
+      const dataAtual = `${agora.getDate().toString().padStart(2, '0')}/${(agora.getMonth() + 1).toString().padStart(2, '0')}/${agora.getFullYear()}`;
+      
       const dados = {
         horaInicio: horaInicio.trim(),
         horaFim: horaFim.trim(),
         frasePadrao,
         psi500: psi500.trim(),
-        psi3000: psi3000.trim()
+        psi3000: psi3000.trim(),
+        dataRegistro: dataAtual
       };
 
       await salvarDados('Teste', dados);
+      Alert.alert('Sucesso', 'Teste registrado com sucesso!');
+      
       // Limpar campos após salvamento
       setHoraInicio('');
       setHoraFim('');

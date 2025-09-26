@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { salvarDados } from '../utils/database';
 
 export default function PlanejamentoScreen() {
@@ -9,10 +9,33 @@ export default function PlanejamentoScreen() {
   const frasePadrao = 'Análise de pré-tarefa, LV e diálogo de segurança.';
 
   const salvarNoBanco = async () => {
+    if (!horaInicio.trim() || !horaFim.trim()) {
+      Alert.alert('Erro', 'Por favor, preencha todos os campos de horário');
+      return;
+    }
+
     try {
-      await salvarDados('planejamento', { horaInicio, horaFim, observacoes, frase: frasePadrao });
+      const agora = new Date();
+      const dataAtual = `${agora.getDate().toString().padStart(2, '0')}/${(agora.getMonth() + 1).toString().padStart(2, '0')}/${agora.getFullYear()}`;
+      
+      const dados = {
+        horaInicio: horaInicio.trim(),
+        horaFim: horaFim.trim(),
+        observacoes: observacoes.trim(),
+        frase: frasePadrao,
+        dataRegistro: dataAtual
+      };
+
+      await salvarDados('planejamento', dados);
+      Alert.alert('Sucesso', 'Planejamento registrado com sucesso!');
+      
+      // Limpar campos após salvamento
+      setHoraInicio('');
+      setHoraFim('');
+      setObservacoes('');
     } catch (error) {
       console.error('Erro ao salvar dados do planejamento:', error);
+      Alert.alert('Erro', 'Não foi possível salvar os dados');
     }
   };
 

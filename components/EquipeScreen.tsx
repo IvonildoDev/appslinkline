@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { salvarDados } from '../utils/database';
 
 export default function EquipeScreen() {
@@ -9,10 +9,32 @@ export default function EquipeScreen() {
   const [unidade, setUnidade] = useState('USL-15');
 
   const salvarNoBanco = async () => {
+    if (!operador.trim() || !auxiliar.trim()) {
+      Alert.alert('Erro', 'Por favor, preencha os campos de operador e auxiliar');
+      return;
+    }
+
     try {
-      await salvarDados('equipe', { turno, operador, auxiliar, unidade });
+      const agora = new Date();
+      const dataAtual = `${agora.getDate().toString().padStart(2, '0')}/${(agora.getMonth() + 1).toString().padStart(2, '0')}/${agora.getFullYear()}`;
+      
+      const dados = {
+        turno,
+        operador: operador.trim(),
+        auxiliar: auxiliar.trim(),
+        unidade: unidade.trim(),
+        dataRegistro: dataAtual
+      };
+
+      await salvarDados('equipe', dados);
+      Alert.alert('Sucesso', 'Dados da equipe salvos com sucesso!');
+      
+      // Limpar campos após salvamento
+      setOperador('');
+      setAuxiliar('');
     } catch (error) {
       console.error('Erro ao salvar dados da equipe:', error);
+      Alert.alert('Erro', 'Não foi possível salvar os dados');
     }
   };
 

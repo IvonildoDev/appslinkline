@@ -1,4 +1,3 @@
-// ...existing code...
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Tabs } from 'expo-router';
 import React from 'react';
@@ -88,6 +87,13 @@ export default function TabLayout() {
         options={{
           title: 'Turma',
           tabBarIcon: ({ color }) => <TabBarIcon name="users" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="historico-poco"
+        options={{
+          title: 'Histórico',
+          tabBarIcon: ({ color }) => <TabBarIcon name="history" color={color} />,
         }}
       />
       {/* Tela two removida */}
