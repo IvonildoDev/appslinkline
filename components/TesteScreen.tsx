@@ -43,7 +43,7 @@ export default function TesteScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 48 }}>
       <View style={styles.content}>
         <Text style={styles.title}>Teste</Text>
         <View style={styles.section}>
@@ -118,7 +118,7 @@ export default function TesteScreen() {
           <Text style={styles.resumoItem}>500 psi: {psi500 || '---'}</Text>
           <Text style={styles.resumoItem}>3000 psi: {psi3000 || '---'}</Text>
         </View>
-        <TouchableOpacity style={styles.registrarButton} onPress={salvarNoBanco}>
+        <TouchableOpacity style={[styles.registrarButton, { marginBottom: 32 }]} onPress={salvarNoBanco}>
           <Text style={styles.registrarButtonText}>Registrar</Text>
         </TouchableOpacity>
       </View>

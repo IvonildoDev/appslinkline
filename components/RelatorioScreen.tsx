@@ -197,7 +197,7 @@ export default function RelatorioScreen() {
   const compartilharWhatsApp = async () => {
     try {
       let mensagem = '📋 RELATÓRIO GERAL SLIKLINE\n\n';
-      
+      // Sempre equipe primeiro
       if (dadosFiltrados.equipe) {
         mensagem += `👥 EQUIPE:\n`;
         mensagem += `• Turno: ${dadosFiltrados.equipe.turno}\n`;
@@ -205,7 +205,18 @@ export default function RelatorioScreen() {
         mensagem += `• Auxiliar: ${dadosFiltrados.equipe.auxiliar}\n`;
         mensagem += `• Unidade: ${dadosFiltrados.equipe.unidade}\n\n`;
       }
-      
+      // Depois turma
+      if (dadosFiltrados.turma) {
+        mensagem += `👨‍👩‍👧‍👦 TURMA:\n`;
+        mensagem += `• Hora início: ${dadosFiltrados.turma.horaInicio}\n`;
+        mensagem += `• Hora fim: ${dadosFiltrados.turma.horaFim}\n`;
+        mensagem += `• Frase: ${dadosFiltrados.turma.frasePadrao}\n`;
+        if (dadosFiltrados.turma.observacoes) {
+          mensagem += `• Observações: ${dadosFiltrados.turma.observacoes}\n`;
+        }
+        mensagem += '\n';
+      }
+      // Depois deslocamento
       if (dadosFiltrados.deslocamento) {
         mensagem += `🚗 DESLOCAMENTO:\n`;
         mensagem += `• Origem: ${dadosFiltrados.deslocamento.origem}\n`;
@@ -213,7 +224,7 @@ export default function RelatorioScreen() {
         mensagem += `• Hora início: ${dadosFiltrados.deslocamento.horaInicio}\n`;
         mensagem += `• Hora fim: ${dadosFiltrados.deslocamento.horaFim}\n\n`;
       }
-      
+      // Depois planejamento
       if (dadosFiltrados.planejamento) {
         mensagem += `📋 PLANEJAMENTO:\n`;
         mensagem += `• Hora início: ${dadosFiltrados.planejamento.horaInicio}\n`;
@@ -224,14 +235,14 @@ export default function RelatorioScreen() {
         }
         mensagem += '\n';
       }
-      
+      // Depois montagem
       if (dadosFiltrados.montagem) {
         mensagem += `🔧 MONTAGEM:\n`;
         mensagem += `• Hora início: ${dadosFiltrados.montagem.horaInicio}\n`;
         mensagem += `• Hora fim: ${dadosFiltrados.montagem.horaFim}\n`;
         mensagem += `• Frase: ${dadosFiltrados.montagem.frase}\n\n`;
       }
-      
+      // Depois teste
       if (dadosFiltrados.teste) {
         mensagem += `🧪 TESTE:\n`;
         mensagem += `• Hora início: ${dadosFiltrados.teste.horaInicio}\n`;
@@ -240,10 +251,9 @@ export default function RelatorioScreen() {
         mensagem += `• 3000 psi: ${dadosFiltrados.teste.psi3000}\n`;
         mensagem += `• Frase: ${dadosFiltrados.teste.frasePadrao}\n\n`;
       }
-      
+      // Depois operações, ordenadas por horaInicio
       if (dadosFiltrados.operações) {
         mensagem += `⚙️ OPERAÇÕES:\n`;
-        // Função para exibir todos os campos do objeto operação
         const traduzirCampo = (chave: string, valor: any) => {
           switch (chave) {
             case 'servico': return `• Serviço: ${valor}`;
@@ -264,46 +274,33 @@ export default function RelatorioScreen() {
               return '';
           }
         };
-        if (Array.isArray(dadosFiltrados.operações)) {
-          dadosFiltrados.operações.forEach((operacao, index) => {
-            if (index > 0) mensagem += `\n`;
-            mensagem += `🔧 ${operacao.tipoOperacao || operacao.servico}:\n`;
-            Object.entries(operacao).forEach(([chave, valor]) => {
-              if (chave === 'tipoOperacao') return; // já exibido no título
-              const linha = traduzirCampo(chave, valor);
-              if (linha) mensagem += linha + '\n';
-            });
-          });
-        } else {
-          // Formato antigo (fallback)
-          Object.entries(dadosFiltrados.operações).forEach(([chave, valor]) => {
+        let operacoesArray = Array.isArray(dadosFiltrados.operações) ? dadosFiltrados.operações : [dadosFiltrados.operações];
+        // Ordenar por horaInicio se existir
+        operacoesArray = operacoesArray.slice().sort((a, b) => {
+          if (a.horaInicio && b.horaInicio) {
+            return a.horaInicio.localeCompare(b.horaInicio);
+          }
+          return 0;
+        });
+        operacoesArray.forEach((operacao, index) => {
+          if (index > 0) mensagem += `\n`;
+          mensagem += `🔧 ${operacao.tipoOperacao || operacao.servico}:\n`;
+          Object.entries(operacao).forEach(([chave, valor]) => {
+            if (chave === 'tipoOperacao') return; // já exibido no título
             const linha = traduzirCampo(chave, valor);
             if (linha) mensagem += linha + '\n';
           });
-        }
+        });
         mensagem += '\n';
       }
-      
+      // Depois desmontagem
       if (dadosFiltrados.desmontagem) {
         mensagem += `🔨 DESMONTAGEM:\n`;
         mensagem += `• Hora início: ${dadosFiltrados.desmontagem.horaInicio}\n`;
         mensagem += `• Hora fim: ${dadosFiltrados.desmontagem.horaFim}\n`;
         mensagem += `• Frase: ${dadosFiltrados.desmontagem.frasePadrao}\n\n`;
       }
-      
-      if (dadosFiltrados.turma) {
-        mensagem += `👨‍👩‍👧‍👦 TURMA:\n`;
-        mensagem += `• Hora início: ${dadosFiltrados.turma.horaInicio}\n`;
-        mensagem += `• Hora fim: ${dadosFiltrados.turma.horaFim}\n`;
-        mensagem += `• Frase: ${dadosFiltrados.turma.frasePadrao}\n`;
-        if (dadosFiltrados.turma.observacoes) {
-          mensagem += `• Observações: ${dadosFiltrados.turma.observacoes}\n`;
-        }
-        mensagem += '\n';
-      }
-      
       mensagem += '📱 Gerado pelo App Slikline';
-      
       const url = `https://wa.me/?text=${encodeURIComponent(mensagem)}`;
       await Linking.openURL(url);
     } catch (error) {
