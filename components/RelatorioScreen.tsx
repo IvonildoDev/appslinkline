@@ -285,11 +285,28 @@ export default function RelatorioScreen() {
         operacoesArray.forEach((operacao, index) => {
           if (index > 0) mensagem += `\n`;
           mensagem += `🔧 ${operacao.tipoOperacao || operacao.servico}:\n`;
-          Object.entries(operacao).forEach(([chave, valor]) => {
-            if (chave === 'tipoOperacao') return; // já exibido no título
-            const linha = traduzirCampo(chave, valor);
-            if (linha) mensagem += linha + '\n';
+          // Serviço
+          if (operacao.servico) mensagem += `* Serviço: ${operacao.servico}\n`;
+          // Data da operação
+          if (operacao.dataOperacao) mensagem += `* Data da operação: ${operacao.dataOperacao}\n`;
+          // Demais campos (exceto observacao e totalBBIUsado)
+          const ordemCampos = [
+            'poco','horaInicio','horaFim','pressaoCabeca','pressaoAnular','operacaoConcluida','statusSelecionado','tipoDesparafinacao','precisouUcaq','temperaturaUCAQ','horaInicioUCAQ','horaFimUCAQ'
+          ];
+          ordemCampos.forEach((chave) => {
+            if (operacao[chave] !== undefined && chave !== 'observacao' && chave !== 'totalBBIUsado') {
+              const linha = traduzirCampo(chave, operacao[chave]);
+              if (linha) mensagem += linha + '\n';
+            }
+            // Após auxílio UCAQ, inserir Total BBL usado
+            if (chave === 'precisouUcaq' && operacao['totalBBIUsado']) {
+              mensagem += `* Total BBL usado: ${operacao['totalBBIUsado']}\n`;
+            }
           });
+          // Observação sempre no final
+          if (operacao.observacao) {
+            mensagem += `* Observação: ${operacao.observacao}\n`;
+          }
         });
         mensagem += '\n';
       }
