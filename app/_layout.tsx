@@ -77,6 +77,7 @@ function RootLayoutNav() {
         <Drawer.Screen name="relatorio" options={{ title: 'Relatório' }} getComponent={() => require('./relatorio').default} />
         <Drawer.Screen name="modal" options={{ title: 'Modal', drawerItemStyle: { display: 'none' } }} getComponent={() => require('./modal').default} />
         <Drawer.Screen name="historico-poco" options={{ title: 'Histórico' }} getComponent={() => require('./(tabs)/historico-poco').default} />
+        <Drawer.Screen name="sobre" options={{ title: 'Sobre' }} getComponent={() => require('./sobre').default} />
       </Drawer.Navigator>
     </ThemeProvider>
   );

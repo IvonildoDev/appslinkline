@@ -10,7 +10,6 @@ const opcoesServicos = [
   'Estampagem',
   'Teste plug',
   'Checagem de coluna',
-  'Plug e Checagem de Coluna e Estampagem',
   'RPE',
 ];
 
