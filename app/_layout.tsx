@@ -9,7 +9,7 @@ import 'react-native-reanimated';
 import { initDatabase } from '../utils/database';
 
 export {
-  ErrorBoundary
+    ErrorBoundary
 } from 'expo-router';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.

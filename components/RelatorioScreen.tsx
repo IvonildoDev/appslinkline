@@ -3,7 +3,7 @@ import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { buscarTodosDados, excluirDadosTela, excluirDadosComPadrao } from '../utils/database';
+import { buscarTodosDados, excluirDadosComPadrao, excluirDadosTela } from '../utils/database';
 
 function useAllData() {
   const [dados, setDados] = useState<Record<string, any>>({});
